@@ -3,20 +3,71 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from .models import playlist_user
 from django.urls.base import reverse
-from django.contrib.auth import authenticate,login,logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login, logout
 from youtube_search import YoutubeSearch
 import json
 # import cardupdate
 
-
-
 f = open('card.json', 'r')
 CONTAINER = json.load(f)
 
+def signout(request):
+    logout(request)
+    return redirect ("login")
+
+def userLogin(request):
+    case = True
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+
+        user = authenticate(username = username, password = password)
+
+        if user is not None:
+            login(request, user)
+            return redirect('/')
+
+        else:
+            case = False
+    context = { 'case' : case}
+
+    return render(request, "login.html", context)
+
+def signup(request):
+    email = True
+    username = True
+    if request.method == 'POST':
+        print(request.POST)
+        username = request.POST['username']
+        email = request.POST['email']
+        password = request.POST['password']
+
+
+        if User.objects.filter(username = username):
+            username = False
+            print('User already exists')
+        elif User.objects.filter(email = email):
+            email = False
+            print('User already exists')
+        else:
+          newUser = User.objects.create_user(
+              username = username,
+              password = password,
+              email = email,
+          ) 
+          newUser.save()
+          return redirect("login")
+    context = {
+        'email' : email,
+        'username' : username
+    }
+
+    return render(request, 'signup.html', context)
+
+@login_required
 def default(request):
     global CONTAINER
-
-
     if request.method == 'POST':
 
         add_playlist(request)
@@ -26,7 +77,7 @@ def default(request):
     return render(request, 'player.html',{'CONTAINER':CONTAINER, 'song':song})
 
 
-
+@login_required
 def playlist(request):
     cur_user = playlist_user.objects.get(username = request.user)
     try:
@@ -43,7 +94,7 @@ def playlist(request):
     # print(list(playlist_row)[0].song_title)
     return render(request, 'playlist.html', {'song':song,'user_playlist':user_playlist})
 
-
+@login_required
 def search(request):
   if request.method == 'POST':
 
